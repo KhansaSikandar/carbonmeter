@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CarbonMeter Dashboard</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<style>
+/* Global Styles */
+body {margin:0;background:#0e1416;color:#e3f1ed;font-family:"Segoe UI",sans-serif;}
+nav{display:flex;justify-content:space-between;align-items:center;background:#152422;padding:12px 30px;box-shadow:0 2px 5px rgba(0,0,0,0.5);}
+.logo{font-size:1.4em;font-weight:bold;color:#54b689;}
+nav .menu a{color:#dce7e3;text-decoration:none;margin:0 15px;font-weight:500;}
+nav .menu a:hover,nav .menu a.active{color:#54b689;border-bottom:2px solid #54b689;padding-bottom:3px;}
+.container{display:flex;flex-wrap:wrap;justify-content:space-around;padding:25px;gap:25px;}
+.panel{background:#162324;border-radius:10px;padding:20px;box-shadow:0 0 12px rgba(84,182,137,0.2);}
+.input-panel{width:360px;}
+.charts-panel{flex:1;min-width:700px;}
+h2{color:#7ee0b1;border-bottom:1px solid #3a6352;padding-bottom:5px;}
+input{width:100%;padding:8px;margin-top:4px;border:none;border-radius:5px;background:#1d2e2f;color:#dff2ea;}
+input[type=range]{accent-color:#54b689;}
+.slider-group{margin-top:12px;}
+.slider-group span{float:right;color:#bde3d0;}
+.totals{display:flex;justify-content:space-between;margin-top:10px;font-weight:bold;color:#bde3d0;}
+.chart-row{display:flex;justify-content:space-between;gap:20px;margin-top:20px;flex-wrap:wrap;}
+.chart-box{flex:1;min-width:300px;max-width:48%;height:300px;background:#1b2b2c;border-radius:10px;padding:15px;}
+.info-box{margin-top:25px;background:#1a2a2b;border-radius:10px;padding:20px;}
+.read-more{color:#54b689;text-decoration:none;}
+.read-more:hover{text-decoration:underline;}
+.solutions,.reports,.about{display:none;padding:40px 80px;color:#dcefe9;}
+.accordion{background:#162324;color:#e3f1ed;cursor:pointer;padding:15px 20px;width:100%;border:none;font-weight:600;border-bottom:1px solid #2e4640;}
+.accordion:hover{background:#1d2f2a;}
+.accordion.active{color:#7ee0b1;}
+.panel2{padding:0 20px;background:#1b2b2c;display:none;border-left:3px solid #54b689;line-height:1.6;}
+.chart-section{background:#162324;margin-top:40px;padding:25px;border-radius:10px;}
+footer{text-align:center;color:#6a847c;padding:15px;border-top:1px solid #223835;font-size:0.9em;}
+.report-box,.about-box{background:#162324;padding:25px;border-radius:10px;max-width:800px;margin:auto;box-shadow:0 0 10px rgba(84,182,137,0.2);}
+button.download-btn{background:#54b689;border:none;padding:10px 20px;border-radius:6px;color:#0e1416;font-weight:bold;cursor:pointer;margin-top:15px;}
+button.download-btn:hover{background:#6ee3a5;}
+</style>
+</head>
+<body>
+
+<nav>
+<div class="logo">🌎 CarbonMeter</div>
+<div class="menu">
+<a href="#" id="dashboardTab" class="active" onclick="showSection('dashboard')">Dashboard</a>
+<a href="#" id="solutionsTab" onclick="showSection('solutions')">Carbon Solutions</a>
+<a href="#" id="reportsTab" onclick="showSection('reports')">Reports</a>
+<a href="#" id="aboutTab" onclick="showSection('about')">About</a>
+</div>
+</nav>
+
+<!-- DASHBOARD -->
+<div id="dashboard" class="container">
+<div class="panel input-panel">
+<h2>Input Activity Data</h2>
+<label>Cars distance (km/year)</label><input id="cars" type="number" value="250000">
+<label>Trucks distance (km/year)</label><input id="trucks" type="number" value="150000">
+<label>Buses distance (km/year)</label><input id="buses" type="number" value="80000">
+<label>Planes flight hours/year</label><input id="planes" type="number" value="400">
+<label>Lighting electricity (kWh/year)</label><input id="lighting" type="number" value="120000">
+<label>Heating thermal energy (kWh-th/year)</label><input id="heating" type="number" value="50000">
+<label>Cooling A/C electricity (kWh/year)</label><input id="cooling" type="number" value="300000">
+<label>Computing electricity (kWh/year)</label><input id="computing" type="number" value="90000">
+<label>Subcontractor emissions (tons CO₂/year)</label><input id="subs" type="number" value="120">
+
+<div class="slider-group">
+<label>EV Share for Cars (%)</label>
+<input id="evShare" type="range" min="0" max="100" value="30" oninput="updateLabels()">
+<span id="evLabel">30%</span>
+</div>
+
+<div class="slider-group">
+<label>KM Reduction for Cars (%)</label>
+<input id="kmRed" type="range" min="0" max="100" value="10" oninput="updateLabels()">
+<span id="kmLabel">10%</span>
+</div>
+
+<div class="slider-group">
+<label>Plane Load Factor (%)</label>
+<input id="planeLoad" type="range" min="0" max="100" value="60" oninput="updateLabels()">
+<span id="planeLabel">60%</span>
+</div>
+
+<div class="totals">
+<div>Baseline: <span id="baseTotal">0</span> t</div>
+<div>Optimized: <span id="optTotal">0</span> t</div>
+</div>
+</div>
+
+<div class="panel charts-panel">
+<h2>Emission Analysis</h2>
+<div class="chart-row">
+<div class="chart-box"><canvas id="pieChart"></canvas></div>
+<div class="chart-box"><canvas id="barChart"></canvas></div>
+</div>
+
+<div class="info-box">
+<h3>🌱 Innovation for a Greener Future</h3>
+<p>According to the <strong>World Economic Forum (WEF)</strong>, AI, IoT, and smart grids could reduce global emissions by up to <strong>15% by 2030</strong>.</p>
+<a class="read-more" href="https://www.weforum.org/agenda/2023/09/how-ai-can-help-reduce-carbon-emissions/" target="_blank">Read more →</a>
+</div>
+</div>
+</div>
+
+<!-- SOLUTIONS -->
+<div id="solutions" class="solutions">
+<h2>🚗 Carbon Solutions: Turning Emissions into Resources</h2>
+<button class="accordion">1️⃣ Carbon Capture from Vehicle Exhaust</button>
+<div class="panel2"><p>Systems can trap CO₂ before it enters the air, then compress and reuse it.</p></div>
+<button class="accordion">⚗️ 2️⃣ Conversion into Usable Fuels</button>
+<div class="panel2"><p>CO₂ can combine with H₂ to create synthetic fuels like methanol. Example: CO₂ + 3H₂ → CH₃OH + H₂O</p></div>
+<button class="accordion">🌿 3️⃣ CO₂ to Building Materials</button>
+<div class="panel2"><p>Companies inject CO₂ into concrete, strengthening material and locking carbon.</p></div>
+<button class="accordion">🧪 4️⃣ CO₂ in Industrial Use</button>
+<div class="panel2"><ul><li>Greenhouses</li><li>Beverages</li><li>Plastics & chemicals</li></ul></div>
+<button class="accordion">⚡ 5️⃣ Microalgae & Biofixation</button>
+<div class="panel2"><p>Directing CO₂ into algae tanks converts it into biomass used for fuel or fertilizer.</p></div>
+
+<div class="chart-section">
+<h3>🌍 CO₂ Allocation Simulator</h3>
+<input type="range" min="0" max="100" value="20" id="sliderInput">
+<canvas id="solutionChart"></canvas>
+</div>
+</div>
+
+<!-- REPORTS -->
+<div id="reports" class="reports">
+<h2>📊 Emission Reports</h2>
+<div class="report-box">
+<p><strong>Total Baseline:</strong> <span id="rBase">—</span> tons CO₂e</p>
+<p><strong>Total Optimized:</strong> <span id="rOpt">—</span> tons CO₂e</p>
+<p><strong>Reduction Achieved:</strong> <span id="rPct">—</span>%</p>
+<p id="rComment">Generate results from the Dashboard first.</p>
+<button class="download-btn" onclick="downloadReport()">⬇️ Download Report</button>
+</div>
+</div>
+
+<!-- ABOUT -->
+<div id="about" class="about">
+<h2>ℹ️ About CarbonMeter</h2>
+<div class="about-box">
+<p><strong>CarbonMeter</strong> is an interactive sustainability dashboard designed to measure and reduce carbon emissions across transport, energy, and infrastructure sectors.</p>
+<p>🌍 <strong>Mission:</strong> Empower organizations to visualize emissions, explore clean-tech solutions, and achieve net-zero goals.</p>
+<p>⚡ <strong>Features:</strong> Real-time CO₂ tracking, optimization modeling, and carbon recycling insights.</p>
+<p>👨‍💻 <strong>Developed by:</strong> FutureLearn UAE | Smart Sustainability Team 2025</p>
+<p>📩 Contact: <a href="mailto:carbonmeter@futurelearn.ae" style="color:#7ee0b1;">carbonmeter@futurelearn.ae</a></p>
+</div>
+</div>
+
+<footer>© 2025 CarbonMeter | Designed for Smart Sustainability</footer>
+
+<script>
+// Section toggle
+function showSection(section){
+["dashboard","solutions","reports","about"].forEach(id=>{
+document.getElementById(id).style.display=(id===section?(id==="dashboard"?"flex":"block"):"none");
+});
+document.querySelectorAll("nav .menu a").forEach(a=>a.classList.remove("active"));
+document.getElementById(section+"Tab").classList.add("active");
+if(section==="reports") generateReport();
+}
+
+// Dashboard
+const factors={cars:0.18,trucks:0.9,buses:1.1,planes:9000,lighting:0.42,heating:0.2,cooling:0.42,computing:0.42};
+let pieChart,barChart;
+function calc(){
+const d={cars:+cars.value,trucks:+trucks.value,buses:+buses.value,planes:+planes.value,lighting:+lighting.value,heating:+heating.value,cooling:+cooling.value,computing:+computing.value,subs:+subs.value,evShare:+evShare.value,kmRed:+kmRed.value,planeLoad:+planeLoad.value};
+const base={Cars:(d.cars*factors.cars)/1000,Trucks:(d.trucks*factors.trucks)/1000,Buses:(d.buses*factors.buses)/1000,Planes:(d.planes*factors.planes)/1000,Lighting:(d.lighting*factors.lighting)/1000,Heating:(d.heating*factors.heating)/1000,Cooling:(d.cooling*factors.cooling)/1000,Computing:(d.computing*factors.computing)/1000,Subcontractors:d.subs};
+const opt={Cars:(d.cars*(1-d.kmRed/100))*(factors.cars*(1-0.7*d.evShare/100))/1000,Trucks:base.Trucks,Buses:base.Buses,Planes:(d.planes*factors.planes*(d.planeLoad/100))/1000,Lighting:base.Lighting,Heating:base.Heating,Cooling:base.Cooling,Computing:base.Computing,Subcontractors:base.Subcontractors};
+baseTotal.innerText=Object.values(base).reduce((a,b)=>a+b,0).toFixed(1);
+optTotal.innerText=Object.values(opt).reduce((a,b)=>a+b,0).toFixed(1);
+drawCharts(base,opt);
+}
+function drawCharts(base,opt){
+const labels=Object.keys(base),optVals=Object.values(opt);
+if(pieChart) pieChart.destroy();
+pieChart=new Chart(document.getElementById("pieChart"),{type:"pie",data:{labels,datasets:[{data:optVals,backgroundColor:["#66bb6a","#42a5f5","#ef5350","#ffb74d","#26c6da","#ab47bc","#8d6e63","#29b6f6","#9ccc65"],borderColor:"#0e1416"}]},options:{plugins:{legend:{labels:{color:"#e3f1ed"}}}}});
+if(barChart) barChart.destroy();
+barChart=new Chart(document.getElementById("barChart"),{type:"bar",data:{labels:["Baseline","Optimized"],datasets:[{data:[+baseTotal.innerText,+optTotal.innerText],backgroundColor:["#42a5f5","#66bb6a"]}]},options:{plugins:{legend:{display:false}},scales:{x:{ticks:{color:"#bde3d0"}},y:{ticks:{color:"#bde3d0"}}}}});
+}
+document.querySelectorAll("input").forEach(inp=>inp.addEventListener("input",calc));
+window.onload=calc;
+function updateLabels(){evLabel.innerText=evShare.value+"%";kmLabel.innerText=kmRed.value+"%";planeLabel.innerText=planeLoad.value+"%";calc();}
+
+// Accordion
+document.querySelectorAll(".accordion").forEach(btn=>{
+btn.addEventListener("click",()=>{btn.classList.toggle("active");const p=btn.nextElementSibling;p.style.display=p.style.display==="block"?"none":"block";});
+});
+
+// CO2 allocation chart
+const ctx=document.getElementById("solutionChart").getContext("2d");
+let solutionChart=new Chart(ctx,{type:"doughnut",data:{labels:["Capture","Fuels","Materials","Industrial","Biofixation"],datasets:[{data:[20,25,20,15,20],backgroundColor:["#66bb6a","#42a5f5","#ffb74d","#ab47bc","#26c6da"],borderColor:"#0e1416"}]},options:{plugins:{legend:{labels:{color:"#e3f1ed"}}},cutout:"70%"}});
+document.getElementById("sliderInput").addEventListener("input",e=>{const v=+e.target.value;solutionChart.data.datasets[0].data=[v,30-v/2,25+v/3,10+v/4,15];solutionChart.update();});
+
+// Reports
+function generateReport(){
+const base=parseFloat(baseTotal.innerText)||0,opt=parseFloat(optTotal.innerText)||0;
+const pct=base?(((base-opt)/base)*100).toFixed(2):0;
+rBase.innerText=base; rOpt.innerText=opt; rPct.innerText=pct;
+rComment.innerText=pct>30?"Excellent performance — strong emission reduction!":pct>10?"Good progress, keep optimizing fleet and energy use.":"Needs improvement — explore EV and renewable integration.";
+}
+function downloadReport(){
+generateReport();
+const txt=`CARBONMETER REPORT\n===================\nBaseline: ${rBase.innerText} tons\nOptimized: ${rOpt.innerText} tons\nReduction: ${rPct.innerText}%\n\nSummary:\n${rComment.innerText}`;
+const blob=new Blob([txt],{type:"text/plain"});const url=URL.createObjectURL(blob);
+const a=document.createElement("a");a.href=url;a.download="CarbonMeter_Report.txt";a.click();URL.revokeObjectURL(url);
+}
+</script>
+</body>
+</html>
